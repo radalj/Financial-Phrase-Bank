@@ -40,7 +40,9 @@ class SelfAttention(nn.Module):
             mask: Optional mask tensor
             
         Returns:
-            Output tensor of shape (batch_size, seq_len, embed_dim)
+            Tuple of:
+              - output tensor of shape (batch_size, seq_len, embed_dim)
+              - attention_weights of shape (batch_size, num_heads, seq_len, seq_len)
         """
         batch_size, seq_len, embed_dim = x.shape
         
@@ -78,7 +80,7 @@ class SelfAttention(nn.Module):
         # Apply output projection
         output = self.out_proj(attended)
         
-        return output
+        return output, attention_weights
 
 
 class LayerNorm(nn.Module):
@@ -214,17 +216,19 @@ class TransformerBlock(nn.Module):
             mask: Optional mask tensor
             
         Returns:
-            Output tensor of shape (batch_size, seq_len, embed_dim)
+            Tuple of:
+              - output tensor of shape (batch_size, seq_len, embed_dim)
+              - attention_weights of shape (batch_size, num_heads, seq_len, seq_len)
         """
         # Self-Attention with residual connection and layer normalization
-        attention_output = self.attention(x, mask)
+        attention_output, attention_weights = self.attention(x, mask)
         x = self.norm1(x + self.dropout(attention_output))  # Residual connection
         
         # Feed-Forward with residual connection and layer normalization
         ff_output = self.feed_forward(x)
         x = self.norm2(x + self.dropout(ff_output))  # Residual connection
         
-        return x
+        return x, attention_weights
 
 
 class FinancialTransformer(nn.Module):
@@ -271,16 +275,18 @@ class FinancialTransformer(nn.Module):
         # Final classifier layer for 3 classes
         self.classifier = nn.Linear(embed_dim, num_classes)
         
-    def forward(self, x, mask=None):
+    def forward(self, x, mask=None, return_attention=False):
         """
         Forward pass through the entire model.
         
         Args:
             x: Input token indices of shape (batch_size, seq_len)
             mask: Optional mask tensor
+            return_attention: If True, also return attention weights from the last layer
             
         Returns:
-            Output logits of shape (batch_size, num_classes)
+            logits of shape (batch_size, num_classes), and optionally
+            attention_weights of shape (batch_size, num_heads, seq_len, seq_len)
         """
         batch_size, seq_len = x.shape
         
@@ -294,17 +300,19 @@ class FinancialTransformer(nn.Module):
         # Combine embeddings
         x = self.dropout(token_emb + pos_emb)
         
-        # Pass through all transformer blocks
+        # Pass through all transformer blocks, keeping last layer's attention weights
+        last_attention_weights = None
         for transformer_block in self.transformer_blocks:
-            x = transformer_block(x, mask)
+            x, last_attention_weights = transformer_block(x, mask)
         
-        # Use the [CLS] token representation (first token) for classification
-        # Or use mean pooling across sequence
+        # Mean pooling across sequence
         x = x.mean(dim=1)  # (batch_size, embed_dim)
         
         # Final classification layer
         logits = self.classifier(x)  # (batch_size, num_classes)
         
+        if return_attention:
+            return logits, last_attention_weights
         return logits
     
 
