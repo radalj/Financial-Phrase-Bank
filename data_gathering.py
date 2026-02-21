@@ -40,7 +40,7 @@ class FinancialDataset(Dataset):
 
 
 
-def load_and_prepare_data(configs=["sentences_allagree"], batch_size=16):
+def load_and_prepare_data(configs=["sentences_allagree", "sentences_50agree", "sentences_66agree", "sentences_75agree"], batch_size=16):
     """
     Load dataset and prepare train/validation dataloaders.
     
@@ -154,5 +154,5 @@ def load_test_data(configs=["sentences_allagree"], batch_size=16, tokenizer=None
 if __name__ == "__main__":
     
     # Load and prepare train/val data
-    data = load_and_prepare_data("sentences_allagree", batch_size=16)
+    data = load_and_prepare_data(["sentences_allagree", "sentences_50agree", "sentences_66agree", "sentences_75agree"], batch_size=16)
     print(f"Tokenizer vocab size: {data['tokenizer'].vocab_size}")

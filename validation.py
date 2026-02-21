@@ -295,7 +295,7 @@ def main():
     print("="*50)
     print("Extracting attention weights from the last transformer layer...")
 
-    test_sentences = [item['sentence'] for item in data['test_data'].select(range(5))]
+    test_sentences = [data['test_data'][i]['sentence'] for i in range(5)]
     visualize_attention_weights(model, tokenizer, test_sentences, device, num_sentences=5)
 
 

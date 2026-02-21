@@ -1,0 +1,65 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage{geometry}
+\geometry{top=2cm, bottom=2cm, left=2.5cm, right=2.5cm}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{xepersian}
+
+\settextfont{FreeSerif} % فونت پیش‌فرض، در صورت نیاز تغییر دهید
+
+% تنظیمات هدر و فوتر
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{گزارش پروژه یادگیری ماشین}
+\cfoot{\thepage}
+
+\title{گزارش پیاده‌سازی مدل Financial Transformer}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\renewcommand{\abstractname}{}
+\begin{abstract}
+در این گزارش، به بررسی و پیاده‌سازی یک مدل ترنسفورمر برای تحلیل احساسات در حوزه مالی می‌پردازیم. از مجموعه داده Financial Phrase Bank استفاده شده است که شامل جملات مالی با برچسب‌های احساسی است. هدف نهایی آموزش مدلی است که بتواند با دقت بالا احساس نهفته در اخبار و جملات مالی را تشخیص دهد.
+\end{abstract}
+
+\section{مقدمه}
+تحلیل احساسات در بازارهای مالی نقشی حیاتی دارد. مدل‌های زبانی مبتنی بر معماری Transformer توانسته‌اند تحولی عظیم در پردازش زبان طبیعی ایجاد کنند. در این پروژه، ما تلاش کردیم تا یک مدل سفارشی را بر روی داده‌های مالی آموزش دهیم.
+
+\section{مجموعه داده (Dataset)}
+داده‌های مورد استفاده از مجموعه \lr{Financial Phrase Bank} استخراج شده‌اند. این مجموعه شامل جملات برچسب‌گذاری شده توسط متخصصان مالی است.
+برای افزایش حجم داده‌ها و بهبود دقت مدل، ما از پیکربندی‌های مختلفی که درصد توافق متخصصان را نشان می‌دهند استفاده کردیم:
+\begin{itemize}
+    \item \lr{sentences\_allagree} (توافق ۱۰۰٪)
+    \item \lr{sentences\_75agree} (توافق ۷۵٪)
+    \item \lr{sentences\_66agree} (توافق ۶۶٪)
+    \item \lr{sentences\_50agree} (توافق ۵۰٪)
+\end{itemize}
+این داده‌ها ترکیب شده و برای آموزش مدل آماده‌سازی شدند.
+
+\section{معماری مدل}
+مدل پیشنهادی \lr{FinancialTransformer} نام دارد که یک مدل مبتنی بر معماری استاندارد ترنسفورمر است. مشخصات کلیدی مدل به شرح زیر است:
+\begin{itemize}
+    \item اندازه نهان (\lr{Embedding Dimension}): ۲۵۶
+    \item تعداد هِدها (\lr{Attention Heads}): ۸
+    \item لایه پیش‌خور (\lr{Feed Forward}): ۵۱۲
+    \item تعداد لایه‌ها: ۴
+    \item طول دنباله: ۱۲۸
+\end{itemize}
+
+\section{روند آموزش}
+برای آموزش مدل از تابع زیان \lr{CrossEntropyLoss} و بهینه‌ساز \lr{AdamW} با نرخ یادگیری $0.0002$ استفاده شد. مدل به مدت ۱۰ دوره (\lr{Epoch}) آموزش دید و نتایج بر روی داده‌های اعتبارسنجی ارزیابی شد.
+
+\section{نتیجه‌گیری}
+مدل در نهایت به 
+\lr{Accuracy} 
+\lr{0.9939}
+و \lr{F1-Score}
+\lr{0.9934}
+رسید که نشان‌دهنده عملکرد بسیار خوب آن در تشخیص احساسات مالی است. 
+
+\end{document}
