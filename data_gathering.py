@@ -40,24 +40,27 @@ class FinancialDataset(Dataset):
 
 
 
-def load_and_prepare_data(config="sentences_allagree", batch_size=16):
+def load_and_prepare_data(configs=["sentences_allagree"], batch_size=16):
     """
     Load dataset and prepare train/validation dataloaders.
     
     Args:
-        config: Dataset configuration to use
+        configs: List of dataset configurations to use
         batch_size: Batch size for DataLoaders
         
     Returns:
         Dictionary with tokenizer, train_loader, val_loader, and data splits
     """
-    # Load dataset
-    dataset = load_dataset("financial_phrasebank", config, trust_remote_code=True)
-    
+    # Load and combine datasets from multiple configurations
+    combined_data = []
+    for config in configs:
+        dataset = load_dataset("financial_phrasebank", config, trust_remote_code=True)
+        combined_data.extend(dataset['train'])
+
     # Split into train and validation (80-20)
-    train_test_split = dataset['train'].train_test_split(test_size=0.2)
-    train_data = train_test_split['train']
-    val_data = train_test_split['test']
+    train_test_split = torch.utils.data.random_split(combined_data, [int(0.8 * len(combined_data)), len(combined_data) - int(0.8 * len(combined_data))])
+    train_data = train_test_split[0]
+    val_data = train_test_split[1]
 
     # Initialize tokenizer
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
@@ -84,28 +87,35 @@ def load_and_prepare_data(config="sentences_allagree", batch_size=16):
     }
 
 
-def load_test_data(config="sentences_allagree", batch_size=16, tokenizer=None):
+def load_test_data(configs=["sentences_allagree"], batch_size=16, tokenizer=None):
     """
     Load dataset and prepare train/validation/test dataloaders for final evaluation.
     
     Args:
-        config: Dataset configuration to use
+        configs: List of dataset configurations to use
         batch_size: Batch size for DataLoader
         tokenizer: BertTokenizer instance
         
     Returns:
         Dictionary with tokenizer, train_loader, val_loader, test_loader, and data splits
     """
-    # Load dataset
-    dataset = load_dataset("financial_phrasebank", config, trust_remote_code=True)
-    
-    # 80% train, 10% val, 10% test
-    train_val = dataset["train"].train_test_split(test_size=0.2)
-    val_test = train_val["test"].train_test_split(test_size=0.5)
+    # Load and combine datasets from multiple configurations
+    combined_data = []
+    for config in configs:
+        dataset = load_dataset("financial_phrasebank", config, trust_remote_code=True)
+        combined_data.extend(dataset['train'])
 
-    train_data = train_val["train"]
-    val_data = val_test["train"]
-    test_data = val_test["test"]
+    # 80% train, 10% val, 10% test
+    train_size = int(0.8 * len(combined_data))
+    val_test_size = len(combined_data) - train_size
+    train_val = torch.utils.data.random_split(combined_data, [train_size, val_test_size])
+
+    val_size = int(0.5 * val_test_size)
+    val_test = torch.utils.data.random_split(train_val[1], [val_size, val_test_size - val_size])
+
+    train_data = train_val[0]
+    val_data = val_test[0]
+    test_data = val_test[1]
 
     # Initialize tokenizer if not provided
     if tokenizer is None:

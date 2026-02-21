@@ -136,7 +136,7 @@ def main():
     Load trained model and evaluate on validation and test sets.
     """
     # Load and prepare data
-    data = load_test_data(config="sentences_allagree", batch_size=16)
+    data = load_test_data(configs=["sentences_allagree", "sentences_75agree", "sentences_66agree", "sentences_50agree"], batch_size=16)
     val_loader = data['val_loader']
     test_loader = data['test_loader']
     tokenizer = data['tokenizer']

@@ -60,7 +60,7 @@ def main():
     Main training script for Financial Transformer model.
     """
     # Load and prepare data
-    data = load_and_prepare_data(config="sentences_allagree", batch_size=16)
+    data = load_and_prepare_data(configs=["sentences_allagree", "sentences_75agree", "sentences_66agree", "sentences_50agree"], batch_size=16)
     train_loader = data['train_loader']
     tokenizer = data['tokenizer']
 
