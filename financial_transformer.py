@@ -61,6 +61,8 @@ class SelfAttention(nn.Module):
         
         # Apply mask if provided
         if mask is not None:
+            # Reshape mask to (batch_size, 1, 1, seq_len) to broadcast with scores (batch_size, num_heads, seq_len, seq_len)
+            mask = mask.unsqueeze(1).unsqueeze(1)
             scores = scores.masked_fill(mask == 0, float('-inf'))
         
         # Apply softmax to get attention weights
@@ -305,42 +307,11 @@ class FinancialTransformer(nn.Module):
         
         return logits
     
-def load_financial_dataset():
-    ds_configs = [
-        "sentences_allagree",
-        "sentences_75agree",
-        "sentences_66agree",
-        "sentences_50agree"]
-    all_ds = {}
-    for config in ds_configs:
-        all_ds[config] = load_dataset("takala/financial_phrasebank", config)
 
-        #plot class distribution for each config
-        train_data = all_ds[config]["train"]
-        labels = [example["label"] for example in train_data]
-        label_counts = {}
-        for label in labels:
-            label_counts[label] = label_counts.get(label, 0) + 1
-        
-        # Map numeric labels to text labels
-        label_names = {0: 'Negative', 1: 'Neutral', 2: 'Positive'}
-        
-        # Create bar plot with text labels on x-axis
-        plt.figure(figsize=(4,3))
-        label_texts = [label_names[label] for label in label_counts.keys()]
-        plt.bar(label_texts, label_counts.values())
-        plt.title(f"Class Distribution for {config}")
-        plt.xlabel("Label")
-        plt.ylabel("Count")
-        plt.savefig(f"class_distribution_{config}.png")
-        plt.close()
-
-    return all_ds
 
 
 # Example usage
 if __name__ == "__main__":
-    all_ds = load_financial_dataset()
 
     # Model hyperparameters
     vocab_size = 10000      # Size of vocabulary
