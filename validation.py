@@ -130,6 +130,77 @@ def plot_confusion_matrix(labels, predictions, title="Confusion Matrix", filenam
     plt.show()
 
 
+def visualize_attention_weights(model, tokenizer, sentences, device, num_sentences=5):
+    """
+    Extract attention weights from the last transformer layer and plot heatmaps.
+
+    For each sentence, averages attention weights across all heads and plots a
+    heatmap showing which tokens the model attends to when making its prediction.
+
+    Args:
+        model: Trained FinancialTransformer model
+        tokenizer: BertTokenizer used to tokenize sentences
+        sentences: List of raw sentence strings
+        device: Device to run inference on
+        num_sentences: Number of sentences to visualize (default: 5)
+    """
+    model.eval()
+    label_names = ["Negative", "Neutral", "Positive"]
+
+    sentences = sentences[:num_sentences]
+
+    for idx, sentence in enumerate(sentences):
+        encoding = tokenizer(
+            sentence,
+            add_special_tokens=True,
+            max_length=128,
+            padding='max_length',
+            truncation=True,
+            return_tensors='pt'
+        )
+
+        input_ids = encoding['input_ids'].to(device)
+        attention_mask = encoding['attention_mask'].to(device)
+
+        with torch.no_grad():
+            logits, attn_weights = model(input_ids, attention_mask, return_attention=True)
+
+        predicted_class = logits.argmax(dim=1).item()
+        predicted_label = label_names[predicted_class]
+
+        # attn_weights: (1, num_heads, seq_len, seq_len) — average over heads
+        avg_attn = attn_weights[0].mean(dim=0).cpu().numpy()  # (seq_len, seq_len)
+
+        # Identify real (non-padding) tokens
+        real_token_ids = attention_mask[0].cpu().numpy()
+        real_len = int(real_token_ids.sum())
+
+        tokens = tokenizer.convert_ids_to_tokens(input_ids[0].cpu().numpy()[:real_len])
+        avg_attn_trimmed = avg_attn[:real_len, :real_len]
+
+        fig, ax = plt.subplots(figsize=(max(8, real_len * 0.5), max(6, real_len * 0.45)))
+        im = ax.imshow(avg_attn_trimmed, cmap='viridis', aspect='auto')
+        plt.colorbar(im, ax=ax)
+
+        ax.set_xticks(range(real_len))
+        ax.set_yticks(range(real_len))
+        ax.set_xticklabels(tokens, rotation=90, fontsize=8)
+        ax.set_yticklabels(tokens, fontsize=8)
+
+        ax.set_xlabel("Key Tokens (attended to)")
+        ax.set_ylabel("Query Tokens")
+        ax.set_title(
+            f"Sentence {idx + 1} — Predicted: {predicted_label}\n\"{sentence[:80]}{'...' if len(sentence) > 80 else ''}\"",
+            fontsize=10
+        )
+
+        plt.tight_layout()
+        filename = f"attention_heatmap_sentence_{idx + 1}.png"
+        plt.savefig(filename, dpi=150)
+        plt.show()
+        print(f"  Saved: {filename} | Prediction: {predicted_label}")
+
+
 def main():
     """
     Main validation and testing script.
@@ -217,6 +288,15 @@ def main():
     print(f"  Loss: {test_results['loss']:.4f}")
     print(f"  Accuracy: {test_results['accuracy']:.4f}")
     print(f"  F1-score: {test_metrics['f1']:.4f}")
+
+    # ===== Attention Weight Visualization =====
+    print("\n" + "="*50)
+    print("ATTENTION WEIGHT VISUALIZATION")
+    print("="*50)
+    print("Extracting attention weights from the last transformer layer...")
+
+    test_sentences = [item['sentence'] for item in data['test_data'].select(range(5))]
+    visualize_attention_weights(model, tokenizer, test_sentences, device, num_sentences=5)
 
 
 if __name__ == "__main__":
