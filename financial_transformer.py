@@ -40,7 +40,9 @@ class SelfAttention(nn.Module):
             mask: Optional mask tensor
             
         Returns:
-            Output tensor of shape (batch_size, seq_len, embed_dim)
+            Tuple of:
+              - output tensor of shape (batch_size, seq_len, embed_dim)
+              - attention_weights of shape (batch_size, num_heads, seq_len, seq_len)
         """
         batch_size, seq_len, embed_dim = x.shape
         
@@ -61,6 +63,8 @@ class SelfAttention(nn.Module):
         
         # Apply mask if provided
         if mask is not None:
+            # Reshape mask to (batch_size, 1, 1, seq_len) to broadcast with scores (batch_size, num_heads, seq_len, seq_len)
+            mask = mask.unsqueeze(1).unsqueeze(1)
             scores = scores.masked_fill(mask == 0, float('-inf'))
         
         # Apply softmax to get attention weights
@@ -76,7 +80,7 @@ class SelfAttention(nn.Module):
         # Apply output projection
         output = self.out_proj(attended)
         
-        return output
+        return output, attention_weights
 
 
 class LayerNorm(nn.Module):
@@ -212,17 +216,19 @@ class TransformerBlock(nn.Module):
             mask: Optional mask tensor
             
         Returns:
-            Output tensor of shape (batch_size, seq_len, embed_dim)
+            Tuple of:
+              - output tensor of shape (batch_size, seq_len, embed_dim)
+              - attention_weights of shape (batch_size, num_heads, seq_len, seq_len)
         """
         # Self-Attention with residual connection and layer normalization
-        attention_output = self.attention(x, mask)
+        attention_output, attention_weights = self.attention(x, mask)
         x = self.norm1(x + self.dropout(attention_output))  # Residual connection
         
         # Feed-Forward with residual connection and layer normalization
         ff_output = self.feed_forward(x)
         x = self.norm2(x + self.dropout(ff_output))  # Residual connection
         
-        return x
+        return x, attention_weights
 
 
 class FinancialTransformer(nn.Module):
@@ -269,16 +275,18 @@ class FinancialTransformer(nn.Module):
         # Final classifier layer for 3 classes
         self.classifier = nn.Linear(embed_dim, num_classes)
         
-    def forward(self, x, mask=None):
+    def forward(self, x, mask=None, return_attention=False):
         """
         Forward pass through the entire model.
         
         Args:
             x: Input token indices of shape (batch_size, seq_len)
             mask: Optional mask tensor
+            return_attention: If True, also return attention weights from the last layer
             
         Returns:
-            Output logits of shape (batch_size, num_classes)
+            logits of shape (batch_size, num_classes), and optionally
+            attention_weights of shape (batch_size, num_heads, seq_len, seq_len)
         """
         batch_size, seq_len = x.shape
         
@@ -292,55 +300,26 @@ class FinancialTransformer(nn.Module):
         # Combine embeddings
         x = self.dropout(token_emb + pos_emb)
         
-        # Pass through all transformer blocks
+        # Pass through all transformer blocks, keeping last layer's attention weights
+        last_attention_weights = None
         for transformer_block in self.transformer_blocks:
-            x = transformer_block(x, mask)
+            x, last_attention_weights = transformer_block(x, mask)
         
-        # Use the [CLS] token representation (first token) for classification
-        # Or use mean pooling across sequence
+        # Mean pooling across sequence
         x = x.mean(dim=1)  # (batch_size, embed_dim)
         
         # Final classification layer
         logits = self.classifier(x)  # (batch_size, num_classes)
         
+        if return_attention:
+            return logits, last_attention_weights
         return logits
     
-def load_financial_dataset():
-    ds_configs = [
-        "sentences_allagree",
-        "sentences_75agree",
-        "sentences_66agree",
-        "sentences_50agree"]
-    all_ds = {}
-    for config in ds_configs:
-        all_ds[config] = load_dataset("takala/financial_phrasebank", config)
 
-        #plot class distribution for each config
-        train_data = all_ds[config]["train"]
-        labels = [example["label"] for example in train_data]
-        label_counts = {}
-        for label in labels:
-            label_counts[label] = label_counts.get(label, 0) + 1
-        
-        # Map numeric labels to text labels
-        label_names = {0: 'Negative', 1: 'Neutral', 2: 'Positive'}
-        
-        # Create bar plot with text labels on x-axis
-        plt.figure(figsize=(4,3))
-        label_texts = [label_names[label] for label in label_counts.keys()]
-        plt.bar(label_texts, label_counts.values())
-        plt.title(f"Class Distribution for {config}")
-        plt.xlabel("Label")
-        plt.ylabel("Count")
-        plt.savefig(f"class_distribution_{config}.png")
-        plt.close()
-
-    return all_ds
 
 
 # Example usage
 if __name__ == "__main__":
-    all_ds = load_financial_dataset()
 
     # Model hyperparameters
     vocab_size = 10000      # Size of vocabulary
