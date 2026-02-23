@@ -1,8 +1,31 @@
 import torch
+import random
 import matplotlib.pyplot as plt
 from datasets import load_dataset
 from transformers import BertTokenizer
 from torch.utils.data import DataLoader, Dataset
+
+
+def random_word_deletion(sentence, p=0.1):
+    """Randomly delete each word from the sentence with probability p."""
+    words = sentence.split()
+    if len(words) == 1:
+        return sentence
+    new_words = [word for word in words if random.random() > p]
+    if len(new_words) == 0:
+        new_words = [random.choice(words)]
+    return ' '.join(new_words)
+
+
+def random_word_swap(sentence, n=1):
+    """Randomly swap n pairs of words in the sentence."""
+    words = sentence.split()
+    if len(words) < 2:
+        return sentence
+    for _ in range(n):
+        idx1, idx2 = random.sample(range(len(words)), 2)
+        words[idx1], words[idx2] = words[idx2], words[idx1]
+    return ' '.join(words)
 
 
 class FinancialDataset(Dataset):
@@ -10,10 +33,11 @@ class FinancialDataset(Dataset):
     Custom Dataset class for Financial Phrase Bank data.
     Tokenizes sentences and returns attention masks along with labels.
     """
-    def __init__(self, data, tokenizer, max_len=128):
+    def __init__(self, data, tokenizer, max_len=128, augment=False):
         self.data = data
         self.tokenizer = tokenizer
         self.max_len = max_len
+        self.augment = augment
 
     def __len__(self):
         return len(self.data)
@@ -21,7 +45,11 @@ class FinancialDataset(Dataset):
     def __getitem__(self, index):
         sentence = self.data[index]['sentence']
         label = self.data[index]['label']
-        
+
+        if self.augment:
+            sentence = random_word_deletion(sentence, p=0.1)
+            sentence = random_word_swap(sentence, n=1)
+
         encoding = self.tokenizer(
             sentence,
             add_special_tokens=True,
@@ -30,7 +58,7 @@ class FinancialDataset(Dataset):
             truncation=True,
             return_tensors='pt'
         )
-        
+
         return {
             'input_ids': encoding['input_ids'].flatten(),
             'attention_mask': encoding['attention_mask'].flatten(),
@@ -65,14 +93,14 @@ def load_and_prepare_data(configs=["sentences_allagree", "sentences_50agree", "s
     # Initialize tokenizer
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
-    # Create DataLoaders
+    # Create DataLoaders (augmentation only on training set)
     train_loader = DataLoader(
-        FinancialDataset(train_data, tokenizer),
+        FinancialDataset(train_data, tokenizer, augment=True),
         batch_size=batch_size,
         shuffle=True
     )
     val_loader = DataLoader(
-        FinancialDataset(val_data, tokenizer),
+        FinancialDataset(val_data, tokenizer, augment=False),
         batch_size=batch_size
     )
 
@@ -121,19 +149,19 @@ def load_test_data(configs=["sentences_allagree"], batch_size=16, tokenizer=None
     if tokenizer is None:
         tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
-    # Create DataLoaders
+    # Create DataLoaders (augmentation only on training set)
     train_loader = DataLoader(
-        FinancialDataset(train_data, tokenizer),
+        FinancialDataset(train_data, tokenizer, augment=True),
         batch_size=batch_size,
         shuffle=True
     )
     val_loader = DataLoader(
-        FinancialDataset(val_data, tokenizer),
+        FinancialDataset(val_data, tokenizer, augment=False),
         batch_size=batch_size,
         shuffle=False
     )
     test_loader = DataLoader(
-        FinancialDataset(test_data, tokenizer),
+        FinancialDataset(test_data, tokenizer, augment=False),
         batch_size=batch_size,
         shuffle=False
     )
