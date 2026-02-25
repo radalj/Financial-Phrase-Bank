@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from data_gathering import load_and_prepare_data
 from financial_transformer import FinancialTransformer
+from config import MODEL_CONFIG, TRAIN_CONFIG, DATA_CONFIGS, MODEL_PATH
 
 
 def train_model(model, train_loader, criterion, optimizer, num_epochs=20, device='cpu', save_path="financial_transformer.pth"):
@@ -58,9 +59,10 @@ def train_model(model, train_loader, criterion, optimizer, num_epochs=20, device
 def main():
     """
     Main training script for Financial Transformer model.
+    Uses hyperparameters from config.py for consistency.
     """
     # Load and prepare data
-    data = load_and_prepare_data(configs=["sentences_allagree", "sentences_75agree", "sentences_66agree", "sentences_50agree"], batch_size=16)
+    data = load_and_prepare_data(configs=DATA_CONFIGS, batch_size=TRAIN_CONFIG["batch_size"])
     train_loader = data['train_loader']
     tokenizer = data['tokenizer']
 
@@ -75,19 +77,21 @@ def main():
 
     # Initialize model
     model = FinancialTransformer(
-        vocab_size=vocab_size,
-        embed_dim=embed_dim,
-        num_heads=num_heads,
-        ff_dim=ff_dim,
-        num_layers=num_layers,
-        max_seq_len=max_seq_len,
-        num_classes=num_classes
+        vocab_size=tokenizer.vocab_size,
+        embed_dim=MODEL_CONFIG["embed_dim"],
+        num_heads=MODEL_CONFIG["num_heads"],
+        ff_dim=MODEL_CONFIG["ff_dim"],
+        num_layers=MODEL_CONFIG["num_layers"],
+        max_seq_len=MODEL_CONFIG["max_seq_len"],
+        num_classes=MODEL_CONFIG["num_classes"],
+        dropout=MODEL_CONFIG["dropout"]
     )
 
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     print(f"Using device: {device}")
+    print(f"Model config: {MODEL_CONFIG}")
 
     # Loss function and optimizer
     criterion = nn.CrossEntropyLoss()
@@ -101,7 +105,7 @@ def main():
         optimizer=optimizer,
         num_epochs=20,
         device=device,
-        save_path="financial_transformer.pth"
+        save_path=MODEL_PATH
     )
 
 

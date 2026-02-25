@@ -4,18 +4,19 @@ import sys
 import os
 from transformers import BertTokenizer
 from financial_transformer import FinancialTransformer
+from config import MODEL_CONFIG, MODEL_PATH
 
 # Label mapping: matches financial_phrasebank dataset (0=negative, 1=neutral, 2=positive)
 LABEL_MAP = {0: "negative", 1: "neutral", 2: "positive"}
 
-def predict(sentences_csv, model_path="financial_transformer.pth", output_csv="tests/submission.csv"):
+def predict(sentences_csv, model_path=MODEL_PATH, output_csv="tests/submission.csv"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
     # Load tokenizer
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
-    # Initialize model with same hyperparameters used during training
+    # Initialize model with config hyperparameters (automatically matches training)
     model = FinancialTransformer(
         vocab_size=tokenizer.vocab_size,
         embed_dim=128,
