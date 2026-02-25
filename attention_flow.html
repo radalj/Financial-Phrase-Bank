@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attention Flow</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #020408;
+    --panel: #040c14;
+    --border: #0a2a3a;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #a855f7;
+    --text: #c8e8f0;
+    --dim: #2a4a5a;
+    --glow: 0 0 20px rgba(0,212,255,0.4);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+  header { text-align: center; margin-bottom: 48px; }
+  .title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(1.4rem, 4vw, 2.4rem);
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-shadow: var(--glow);
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    font-size: 0.75rem;
+    color: var(--dim);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .input-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--accent);
+    padding: 24px;
+    margin-bottom: 32px;
+    position: relative;
+  }
+  .input-panel::before {
+    content: 'SENTENCE INPUT';
+    position: absolute;
+    top: -10px; left: 20px;
+    background: var(--panel);
+    padding: 0 8px;
+    font-size: 0.65rem;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+  }
+  .input-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  input[type="text"] {
+    flex: 1;
+    min-width: 200px;
+    background: #010a12;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.9rem;
+    padding: 12px 16px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 12px rgba(0,212,255,0.15); }
+  input[type="text"]::placeholder { color: var(--dim); }
+  .btn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 12px 24px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--accent); color: var(--bg); box-shadow: var(--glow); }
+  .presets { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .preset-btn {
+    background: transparent;
+    border: 1px solid var(--dim);
+    color: var(--dim);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.68rem;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+  .preset-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .controls {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+    align-items: center;
+  }
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.7rem;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .control-group label { color: var(--accent); }
+  input[type="range"] { -webkit-appearance: none; width: 100px; height: 2px; background: var(--border); outline: none; }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    background: var(--accent);
+    border-radius: 0;
+    cursor: pointer;
+    box-shadow: 0 0 8px var(--accent);
+  }
+  .val-display { color: var(--text); min-width: 28px; }
+  .head-selector { display: flex; gap: 6px; flex-wrap: wrap; }
+  .head-btn {
+    width: 28px; height: 28px;
+    background: transparent;
+    border: 1px solid var(--dim);
+    color: var(--dim);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .head-btn.active {
+    border-color: var(--accent3);
+    color: var(--accent3);
+    background: rgba(168,85,247,0.1);
+    box-shadow: 0 0 8px rgba(168,85,247,0.3);
+  }
+  .canvas-wrapper {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  canvas { display: block; width: 100%; }
+  .legend {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    font-size: 0.65rem;
+    color: var(--dim);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .stats { margin-top: 20px; display: flex; gap: 16px; flex-wrap: wrap; }
+  .stat-card {
+    flex: 1;
+    min-width: 140px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--accent3);
+    padding: 14px 16px;
+  }
+  .stat-label { font-size: 0.6rem; color: var(--dim); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 6px; }
+  .stat-value { font-family: 'Orbitron', sans-serif; font-size: 1.1rem; color: var(--accent); }
+  .matrix-panel {
+    margin-top: 20px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--accent2);
+    padding: 20px;
+    position: relative;
+  }
+  .matrix-panel::before {
+    content: 'ATTENTION MATRIX';
+    position: absolute;
+    top: -10px; left: 20px;
+    background: var(--panel);
+    padding: 0 8px;
+    font-size: 0.65rem;
+    color: var(--accent2);
+    letter-spacing: 0.2em;
+  }
+  #matrix-canvas { display: block; margin: 0 auto; }
+  .matrix-hint { text-align: center; font-size: 0.65rem; color: var(--dim); margin-top: 10px; letter-spacing: 0.1em; }
+  .status {
+    position: absolute;
+    top: 12px; right: 16px;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 0.65rem; color: var(--accent); letter-spacing: 0.1em;
+  }
+  .status-dot {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="title">Attention Flow Visualizer</div>
+    <div class="subtitle">Transformer · Multi-Head Self-Attention · Real-time Particle Simulation</div>
+  </header>
+
+  <div class="input-panel">
+    <div class="input-row">
+      <input type="text" id="sentence-input" placeholder="Enter a financial sentence..." value="Revenue growth exceeded analyst expectations this quarter">
+      <button class="btn" onclick="analyzeAndAnimate()">▶ ANALYZE</button>
+    </div>
+    <div class="presets">
+      <span style="font-size:0.65rem;color:var(--dim);align-self:center;letter-spacing:0.1em">PRESETS:</span>
+      <button class="preset-btn" onclick="usePreset(this)">Revenue surged 40% beating forecasts</button>
+      <button class="preset-btn" onclick="usePreset(this)">Losses widened due to market volatility</button>
+      <button class="preset-btn" onclick="usePreset(this)">Dividend yield remains stable this year</button>
+      <button class="preset-btn" onclick="usePreset(this)">CEO resigned amid accounting scandal</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <label>HEAD</label>
+      <div class="head-selector" id="head-selector">
+        <button class="head-btn active" onclick="selectHead(0,this)">0</button>
+        <button class="head-btn" onclick="selectHead(1,this)">1</button>
+        <button class="head-btn" onclick="selectHead(2,this)">2</button>
+        <button class="head-btn" onclick="selectHead(3,this)">3</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <label>SPEED</label>
+      <input type="range" id="speed-slider" min="1" max="10" value="5" oninput="updateSpeed(this.value)">
+      <span class="val-display" id="speed-val">5</span>
+    </div>
+    <div class="control-group">
+      <label>DENSITY</label>
+      <input type="range" id="density-slider" min="1" max="8" value="4" oninput="updateDensity(this.value)">
+      <span class="val-display" id="density-val">4</span>
+    </div>
+    <div class="control-group">
+      <label>THRESHOLD</label>
+      <input type="range" id="thresh-slider" min="0" max="90" value="15" oninput="updateThreshold(this.value)">
+      <span class="val-display" id="thresh-val">15%</span>
+    </div>
+  </div>
+
+  <div class="canvas-wrapper">
+    <div class="status"><div class="status-dot"></div>LIVE</div>
+    <canvas id="main-canvas"></canvas>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#00d4ff"></div>Strong attention</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div>Medium attention</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ff6b35"></div>Self-attention</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#2a4a5a"></div>Weak / filtered</div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Tokens</div>
+      <div class="stat-value" id="stat-tokens">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Active Flows</div>
+      <div class="stat-value" id="stat-flows">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Top Attention Pair</div>
+      <div class="stat-value" id="stat-top" style="font-size:0.75rem;padding-top:4px">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Head Entropy</div>
+      <div class="stat-value" id="stat-entropy">—</div>
+    </div>
+  </div>
+
+  <div class="matrix-panel">
+    <canvas id="matrix-canvas"></canvas>
+    <div class="matrix-hint">Hover over a cell to highlight that token pair in the flow above</div>
+  </div>
+</div>
+
+<script>
+let tokens = [];
+let attentionWeights = [];
+let particles = [];
+let selectedHead = 0;
+let speedMult = 5;
+let densityMult = 4;
+let threshold = 0.15;
+let animId = null;
+let hoveredPair = null;
+let nodePositions = [];
+const NUM_HEADS = 4;
+const CANVAS_HEIGHT = 340;
+
+const COLORS = {
+  strong: { r:0, g:212, b:255 },
+  medium: { r:168, g:85, b:247 },
+  self:   { r:255, g:107, b:53 },
+};
+
+function seedRng(seed) {
+  let s = seed;
+  return () => { s = (s * 16807) % 2147483647; return (s-1)/2147483646; };
+}
+
+function generateAttention(toks) {
+  const n = toks.length;
+  const headFocus = [
+    (i,j,ti,tj) => {
+      const fin = ['revenue','growth','profit','loss','margin','earnings','dividend','yield','market','price','surge','decline','beat','miss','exceed','analyst'];
+      return (fin.some(w=>ti.toLowerCase().includes(w))||fin.some(w=>tj.toLowerCase().includes(w))) ? 0.4 : 0.0;
+    },
+    (i,j,ti,tj) => Math.max(0, 1 - Math.abs(i-j)/n) * 0.5,
+    (i,j,ti,tj) => Math.max(0, 0.3 - Math.abs(ti.length-tj.length)/10),
+    (i,j,ti,tj) => { const e=Math.min(i,n-1-i)/n; const f=Math.min(j,n-1-j)/n; return (1-e)*0.2+(1-f)*0.2; }
+  ];
+  const weights = [];
+  for (let h=0; h<NUM_HEADS; h++) {
+    const rng = seedRng(h*137+toks.join('').length*31);
+    const mat = toks.map((ti,i) => toks.map((tj,j) => rng()*0.3 + headFocus[h](i,j,ti,tj) + (i===j?0.2:0)));
+    const soft = mat.map(row => {
+      const max = Math.max(...row);
+      const exps = row.map(v=>Math.exp(v-max));
+      const sum = exps.reduce((a,b)=>a+b,0);
+      return exps.map(v=>v/sum);
+    });
+    weights.push(soft);
+  }
+  return weights;
+}
+
+function bezier(t, p0, p1, p2) {
+  const mt=1-t; return mt*mt*p0+2*mt*t*p1+t*t*p2;
+}
+
+function spawnParticle(fromIdx, toIdx, weight) {
+  const from = nodePositions[fromIdx];
+  const to   = nodePositions[toIdx];
+  if (!from||!to) return null;
+  const isSelf = fromIdx===toIdx;
+  const col = isSelf ? COLORS.self : weight>0.25 ? COLORS.strong : COLORS.medium;
+  const cx = (from.x+to.x)/2 + (Math.random()-0.5)*80;
+  const cy = (from.y+to.y)/2 - 40 - Math.random()*60;
+  return {
+    fromIdx, toIdx, weight,
+    t: Math.random(),
+    speed: (0.003+Math.random()*0.004)*(speedMult/5),
+    col, alpha: Math.min(1,weight*3), size: 2+weight*4,
+    cx, cy, fromX:from.x, fromY:from.y, toX:to.x, toY:to.y
+  };
+}
+
+function setupCanvas() {
+  const canvas = document.getElementById('main-canvas');
+  canvas.width  = canvas.parentElement.clientWidth;
+  canvas.height = CANVAS_HEIGHT;
+  return canvas;
+}
+
+function computeNodePositions(canvas) {
+  const n = tokens.length;
+  const margin = 70;
+  const usable = canvas.width - margin*2;
+  const spacing = n>1 ? usable/(n-1) : 0;
+  const y = canvas.height*0.65;
+  nodePositions = tokens.map((_,i) => ({
+    x: n===1 ? canvas.width/2 : margin+i*spacing, y
+  }));
+}
+
+function initParticles() {
+  particles = [];
+  const w = attentionWeights[selectedHead];
+  if (!w) return;
+  const n = tokens.length;
+  for (let i=0;i<n;i++) {
+    for (let j=0;j<n;j++) {
+      const weight = w[i][j];
+      if (weight<threshold) continue;
+      for (let p=0;p<densityMult;p++) {
+        const part = spawnParticle(i,j,weight);
+        if (part) particles.push(part);
+      }
+    }
+  }
+}
+
+function draw() {
+  const canvas = document.getElementById('main-canvas');
+  const ctx = canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+
+  ctx.fillStyle='#040c14';
+  ctx.fillRect(0,0,W,H);
+
+  const weights = attentionWeights[selectedHead];
+  if (weights) {
+    for (let i=0;i<tokens.length;i++) {
+      for (let j=0;j<tokens.length;j++) {
+        const weight=weights[i][j];
+        if (weight<threshold) continue;
+        const from=nodePositions[i], to=nodePositions[j];
+        if (!from||!to) continue;
+        const isHov = hoveredPair&&hoveredPair.from===i&&hoveredPair.to===j;
+        const isSelf = i===j;
+        const cx=(from.x+to.x)/2+(i>j?-40:40);
+        const cy=(from.y+to.y)/2-40-weight*60;
+        ctx.beginPath();
+        ctx.moveTo(from.x,from.y);
+        ctx.quadraticCurveTo(cx,cy,to.x,to.y);
+        const alpha = isHov?0.4:Math.min(0.12,weight*0.4);
+        ctx.strokeStyle = isSelf?`rgba(255,107,53,${alpha})`:weight>0.25?`rgba(0,212,255,${alpha})`:`rgba(168,85,247,${alpha})`;
+        ctx.lineWidth = isHov?2:1;
+        ctx.stroke();
+      }
+    }
+  }
+
+  for (const p of particles) {
+    const isHov = hoveredPair&&hoveredPair.from===p.fromIdx&&hoveredPair.to===p.toIdx;
+    const x = bezier(p.t,p.fromX,p.cx,p.toX);
+    const y = bezier(p.t,p.fromY,p.cy,p.toY);
+    const alpha = isHov?Math.min(1,p.alpha*2):p.alpha;
+    const size  = isHov?p.size*1.6:p.size;
+    const grad = ctx.createRadialGradient(x,y,0,x,y,size*3);
+    grad.addColorStop(0,`rgba(${p.col.r},${p.col.g},${p.col.b},${alpha})`);
+    grad.addColorStop(1,`rgba(${p.col.r},${p.col.g},${p.col.b},0)`);
+    ctx.beginPath(); ctx.arc(x,y,size*3,0,Math.PI*2);
+    ctx.fillStyle=grad; ctx.fill();
+    ctx.beginPath(); ctx.arc(x,y,size*0.6,0,Math.PI*2);
+    ctx.fillStyle=`rgba(${p.col.r},${p.col.g},${p.col.b},${alpha})`; ctx.fill();
+  }
+
+  for (let i=0;i<tokens.length;i++) {
+    const pos=nodePositions[i];
+    const hl=(hoveredPair&&(hoveredPair.from===i||hoveredPair.to===i));
+    ctx.beginPath(); ctx.arc(pos.x,pos.y,hl?24:19,0,Math.PI*2);
+    ctx.strokeStyle=hl?'rgba(0,212,255,0.6)':'rgba(0,212,255,0.2)'; ctx.lineWidth=1; ctx.stroke();
+    ctx.beginPath(); ctx.arc(pos.x,pos.y,hl?15:11,0,Math.PI*2);
+    ctx.fillStyle=hl?'rgba(0,212,255,0.3)':'rgba(0,212,255,0.1)'; ctx.fill();
+    ctx.strokeStyle=hl?'#00d4ff':'rgba(0,212,255,0.5)'; ctx.lineWidth=hl?2:1; ctx.stroke();
+    ctx.font=`bold 12px 'Share Tech Mono'`;
+    ctx.fillStyle=hl?'#ffffff':'#c8e8f0';
+    ctx.textAlign='center';
+    ctx.fillText(tokens[i],pos.x,pos.y+40);
+    ctx.font=`9px 'Share Tech Mono'`;
+    ctx.fillStyle='rgba(0,212,255,0.45)';
+    ctx.fillText(`[${i}]`,pos.x,pos.y+52);
+  }
+}
+
+function tick() {
+  for (const p of particles) {
+    p.t += p.speed*(speedMult/5);
+    if (p.t>=1) {
+      p.t=0;
+      const from=nodePositions[p.fromIdx], to=nodePositions[p.toIdx];
+      if (from&&to) {
+        p.cx=(from.x+to.x)/2+(Math.random()-0.5)*80;
+        p.cy=(from.y+to.y)/2-40-Math.random()*60;
+      }
+    }
+  }
+  draw();
+  animId=requestAnimationFrame(tick);
+}
+
+function drawMatrix() {
+  const canvas=document.getElementById('matrix-canvas');
+  const n=tokens.length;
+  if (!n) return;
+  const cellSize=Math.min(46,Math.floor((Math.min(window.innerWidth-80,700))/(n+1)));
+  canvas.width=(n+1)*cellSize; canvas.height=(n+1)*cellSize;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#040c14'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  const w=attentionWeights[selectedHead]; if (!w) return;
+  for (let i=0;i<n;i++) {
+    for (let j=0;j<n;j++) {
+      const val=w[i][j];
+      const x=(j+1)*cellSize, y=(i+1)*cellSize;
+      const isHov=hoveredPair&&hoveredPair.from===i&&hoveredPair.to===j;
+      ctx.fillStyle=`rgb(${Math.round(val*20)},${Math.round(20+val*192)},${Math.round(40+val*215)})`;
+      ctx.fillRect(x,y,cellSize-1,cellSize-1);
+      if (isHov) { ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.strokeRect(x,y,cellSize-1,cellSize-1); }
+      if (cellSize>28) {
+        ctx.font=`${Math.max(7,cellSize*0.26)}px 'Share Tech Mono'`;
+        ctx.fillStyle=val>0.3?'#000':'rgba(200,232,240,0.7)';
+        ctx.textAlign='center';
+        ctx.fillText(val.toFixed(2),x+cellSize/2,y+cellSize/2+4);
+      }
+    }
+  }
+  ctx.font=`${Math.max(8,cellSize*0.28)}px 'Share Tech Mono'`;
+  ctx.fillStyle='#00d4ff'; ctx.textAlign='right';
+  for (let i=0;i<n;i++) ctx.fillText(tokens[i].substring(0,7),cellSize-3,(i+1)*cellSize+cellSize/2+4);
+  ctx.textAlign='center';
+  for (let j=0;j<n;j++) {
+    ctx.save();
+    ctx.translate((j+1)*cellSize+cellSize/2,cellSize-4);
+    ctx.rotate(-Math.PI/4);
+    ctx.fillText(tokens[j].substring(0,7),0,0);
+    ctx.restore();
+  }
+}
+
+document.getElementById('matrix-canvas').addEventListener('mousemove',e=>{
+  const canvas=document.getElementById('matrix-canvas');
+  const n=tokens.length; if (!n) return;
+  const cellSize=canvas.width/(n+1);
+  const rect=canvas.getBoundingClientRect();
+  const scaleX=canvas.width/rect.width;
+  const mx=(e.clientX-rect.left)*scaleX, my=(e.clientY-rect.top)*scaleX;
+  const col=Math.floor(mx/cellSize)-1, row=Math.floor(my/cellSize)-1;
+  hoveredPair=(row>=0&&row<n&&col>=0&&col<n)?{from:row,to:col}:null;
+  drawMatrix();
+});
+document.getElementById('matrix-canvas').addEventListener('mouseleave',()=>{ hoveredPair=null; drawMatrix(); });
+
+function updateStats() {
+  const n=tokens.length;
+  document.getElementById('stat-tokens').textContent=n;
+  const w=attentionWeights[selectedHead];
+  let flows=0, topVal=-1, topPair='', entropy=0;
+  if (w) {
+    for (let i=0;i<n;i++) {
+      let re=0;
+      for (let j=0;j<n;j++) {
+        const v=w[i][j];
+        if (v>=threshold) flows++;
+        if (v>topVal) { topVal=v; topPair=`${tokens[i]} → ${tokens[j]}`; }
+        if (v>1e-10) re-=v*Math.log2(v);
+      }
+      entropy+=re;
+    }
+    entropy/=n;
+  }
+  document.getElementById('stat-flows').textContent=flows;
+  document.getElementById('stat-top').textContent=topPair||'—';
+  document.getElementById('stat-entropy').textContent=entropy>0?entropy.toFixed(2)+' bits':'—';
+}
+
+function analyzeAndAnimate() {
+  const sentence=document.getElementById('sentence-input').value.trim();
+  if (!sentence) return;
+  tokens=sentence.replace(/[.,!?;:]/g,'').split(/\s+/).filter(Boolean).slice(0,12);
+  attentionWeights=generateAttention(tokens);
+  if (animId) cancelAnimationFrame(animId);
+  const canvas=setupCanvas();
+  computeNodePositions(canvas);
+  initParticles();
+  updateStats();
+  drawMatrix();
+  tick();
+}
+
+function selectHead(h,btn) {
+  selectedHead=h;
+  document.querySelectorAll('.head-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  initParticles(); updateStats(); drawMatrix();
+}
+
+function updateSpeed(v) { speedMult=+v; document.getElementById('speed-val').textContent=v; }
+function updateDensity(v) { densityMult=+v; document.getElementById('density-val').textContent=v; initParticles(); }
+function updateThreshold(v) { threshold=v/100; document.getElementById('thresh-val').textContent=v+'%'; initParticles(); updateStats(); drawMatrix(); }
+function usePreset(btn) { document.getElementById('sentence-input').value=btn.textContent.trim(); analyzeAndAnimate(); }
+
+window.addEventListener('resize',()=>{ if (tokens.length>0) { const c=setupCanvas(); computeNodePositions(c); initParticles(); drawMatrix(); } });
+
+analyzeAndAnimate();
+</script>
+</body>
+</html>

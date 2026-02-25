@@ -18,9 +18,9 @@ def predict(sentences_csv, model_path="financial_transformer.pth", output_csv="t
     # Initialize model with same hyperparameters used during training
     model = FinancialTransformer(
         vocab_size=tokenizer.vocab_size,
-        embed_dim=256,
-        num_heads=8,
-        ff_dim=512,
+        embed_dim=128,
+        num_heads=2,
+        ff_dim=128,
         num_layers=4,
         max_seq_len=128,
         num_classes=3,

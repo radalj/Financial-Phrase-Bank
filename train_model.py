@@ -5,7 +5,7 @@ from data_gathering import load_and_prepare_data
 from financial_transformer import FinancialTransformer
 
 
-def train_model(model, train_loader, criterion, optimizer, num_epochs=10, device='cpu', save_path="financial_transformer.pth"):
+def train_model(model, train_loader, criterion, optimizer, num_epochs=20, device='cpu', save_path="financial_transformer.pth"):
     """
     Train the Financial Transformer model.
     
@@ -66,9 +66,9 @@ def main():
 
     # Model hyperparameters
     vocab_size = tokenizer.vocab_size
-    embed_dim = 256
-    num_heads = 8
-    ff_dim = 512
+    embed_dim = 128
+    num_heads = 2
+    ff_dim = 128
     num_layers = 4
     max_seq_len = 128
     num_classes = 3
@@ -91,7 +91,7 @@ def main():
 
     # Loss function and optimizer
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.AdamW(model.parameters(), lr=2e-4)
+    optimizer = optim.AdamW(model.parameters(), lr=0.00080346, weight_decay=4.877e-03)
 
     # Train model
     train_model(
@@ -99,7 +99,7 @@ def main():
         train_loader=train_loader,
         criterion=criterion,
         optimizer=optimizer,
-        num_epochs=10,
+        num_epochs=20,
         device=device,
         save_path="financial_transformer.pth"
     )
