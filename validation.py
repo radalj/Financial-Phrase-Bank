@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from data_gathering import load_test_data
 from financial_transformer import FinancialTransformer
+from config import MODEL_CONFIG, DATA_CONFIGS, MODEL_PATH
 
 
 def validate_model(model, data_loader, criterion, device, dataset_name="Validation"):
@@ -207,29 +208,21 @@ def main():
     Load trained model and evaluate on validation and test sets.
     """
     # Load and prepare data
-    data = load_test_data(configs=["sentences_allagree", "sentences_75agree", "sentences_66agree", "sentences_50agree"], batch_size=16)
+    data = load_test_data(configs=DATA_CONFIGS, batch_size=16)
     val_loader = data['val_loader']
     test_loader = data['test_loader']
     tokenizer = data['tokenizer']
 
-    # Model hyperparameters
-    vocab_size = tokenizer.vocab_size
-    embed_dim = 256
-    num_heads = 8
-    ff_dim = 512
-    num_layers = 4
-    max_seq_len = 128
-    num_classes = 3
-
-    # Initialize model
+    # Initialize model with config hyperparameters (automatically matches training)
     model = FinancialTransformer(
-        vocab_size=vocab_size,
-        embed_dim=embed_dim,
-        num_heads=num_heads,
-        ff_dim=ff_dim,
-        num_layers=num_layers,
-        max_seq_len=max_seq_len,
-        num_classes=num_classes
+        vocab_size=tokenizer.vocab_size,
+        embed_dim=MODEL_CONFIG["embed_dim"],
+        num_heads=MODEL_CONFIG["num_heads"],
+        ff_dim=MODEL_CONFIG["ff_dim"],
+        num_layers=MODEL_CONFIG["num_layers"],
+        max_seq_len=MODEL_CONFIG["max_seq_len"],
+        num_classes=MODEL_CONFIG["num_classes"],
+        dropout=MODEL_CONFIG["dropout"]
     )
 
     # Set device
@@ -238,9 +231,8 @@ def main():
     print(f"Using device: {device}")
 
     # Load trained model
-    model_path = "financial_transformer.pth"
-    model.load_state_dict(torch.load(model_path, map_location=device))
-    print(f"✅ Model loaded from {model_path}")
+    model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
+    print(f"✅ Model loaded from {MODEL_PATH}")
 
     # Loss function
     criterion = nn.CrossEntropyLoss()

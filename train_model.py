@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from data_gathering import load_and_prepare_data
 from financial_transformer import FinancialTransformer
+from config import MODEL_CONFIG, TRAIN_CONFIG, DATA_CONFIGS, MODEL_PATH
 
 
 def train_model(model, train_loader, criterion, optimizer, num_epochs=10, device='cpu', save_path="financial_transformer.pth"):
@@ -58,40 +59,38 @@ def train_model(model, train_loader, criterion, optimizer, num_epochs=10, device
 def main():
     """
     Main training script for Financial Transformer model.
+    Uses hyperparameters from config.py for consistency.
     """
     # Load and prepare data
-    data = load_and_prepare_data(configs=["sentences_allagree", "sentences_75agree", "sentences_66agree", "sentences_50agree"], batch_size=16)
+    data = load_and_prepare_data(configs=DATA_CONFIGS, batch_size=TRAIN_CONFIG["batch_size"])
     train_loader = data['train_loader']
     tokenizer = data['tokenizer']
 
-    # Model hyperparameters
-    vocab_size = tokenizer.vocab_size
-    embed_dim = 256
-    num_heads = 8
-    ff_dim = 512
-    num_layers = 4
-    max_seq_len = 128
-    num_classes = 3
-
-    # Initialize model
+    # Initialize model with config hyperparameters
     model = FinancialTransformer(
-        vocab_size=vocab_size,
-        embed_dim=embed_dim,
-        num_heads=num_heads,
-        ff_dim=ff_dim,
-        num_layers=num_layers,
-        max_seq_len=max_seq_len,
-        num_classes=num_classes
+        vocab_size=tokenizer.vocab_size,
+        embed_dim=MODEL_CONFIG["embed_dim"],
+        num_heads=MODEL_CONFIG["num_heads"],
+        ff_dim=MODEL_CONFIG["ff_dim"],
+        num_layers=MODEL_CONFIG["num_layers"],
+        max_seq_len=MODEL_CONFIG["max_seq_len"],
+        num_classes=MODEL_CONFIG["num_classes"],
+        dropout=MODEL_CONFIG["dropout"]
     )
 
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     print(f"Using device: {device}")
+    print(f"Model config: {MODEL_CONFIG}")
 
-    # Loss function and optimizer
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.AdamW(model.parameters(), lr=2e-4)
+    # Loss function and optimizer with config parameters
+    criterion = nn.CrossEntropyLoss(label_smoothing=TRAIN_CONFIG["label_smoothing"])
+    optimizer = optim.AdamW(
+        model.parameters(), 
+        lr=TRAIN_CONFIG["learning_rate"], 
+        weight_decay=TRAIN_CONFIG["weight_decay"]
+    )
 
     # Train model
     train_model(
@@ -99,9 +98,9 @@ def main():
         train_loader=train_loader,
         criterion=criterion,
         optimizer=optimizer,
-        num_epochs=10,
+        num_epochs=TRAIN_CONFIG["num_epochs"],
         device=device,
-        save_path="financial_transformer.pth"
+        save_path=MODEL_PATH
     )
 
 
